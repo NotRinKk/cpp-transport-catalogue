@@ -17,17 +17,19 @@ namespace transport_catalogue {
     }
 
     TransportCatalogue::Bus* TransportCatalogue::FindBusByName(std::string_view name) const {
-        if (index_buses_.count(name) == 0) {
+        auto it = index_buses_.find(name);
+        if(it == index_buses_.end()) {
             return nullptr;
         }
-        return index_buses_.at(name);
+        return (*it).second;
     }
 
     TransportCatalogue::Stop* TransportCatalogue::FindStopByName(std::string_view name) const {
-        if(index_stops_.count(name) == 0) {
+        auto it = index_stops_.find(name);
+        if (it == index_stops_.end())         {
             return nullptr;
         }
-        return index_stops_.at(name);
+        return (*it).second;
     }
 
     size_t TransportCatalogue::CountUniqueStopsByBus(TransportCatalogue::Bus* bus) const { 
@@ -47,59 +49,68 @@ namespace transport_catalogue {
         return distance;
     }
 
-    std::string TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
+    TransportCatalogue::BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
         using namespace std;
 
         string info;
         auto bus = FindBusByName(bus_name);
         if (bus == nullptr) {
-            info = "Bus " + string(bus_name) + ": not found\n";
-            return info;
+            BusInfo bus_info{ 
+                             false,
+                             bus_name,
+                             0u,
+                             0u,
+                             0. 
+            };
+            return bus_info;
         }
 
         size_t unique_stops = CountUniqueStopsByBus(bus);
         double distance = GetBusDistance(bus);
 
-        ostringstream oss;
-        oss << "Bus " << bus_name << ": " 
-            << bus->stops.size() << " stops on route, " 
-            << unique_stops << " unique stops, "
-            << setprecision(6) << distance << " route length" << endl;
+        BusInfo bus_info{
+                          true,
+                          bus_name,
+                          bus->stops.size(),
+                          unique_stops,
+                          distance 
+        };
 
-        info = oss.str();
-
-        return info;
+        return bus_info;
     }
 
-    std::string TransportCatalogue::GetStopInfo(std::string_view stop_name) const {
+    TransportCatalogue::StopInfo TransportCatalogue::GetStopInfo(std::string_view stop_name) const {
         using namespace std;
 
-        string info = "Stop " + string(stop_name);
         auto stop = FindStopByName(stop_name);
         if (stop == nullptr) {
-            info += ": not found\n";
-            return info;
+            StopInfo stop_info{
+                                false,
+                                stop_name,
+                                std::set<std::string_view>()
+            };
+            return stop_info;
         }
 
-        const auto has_buses = buses_to_stop_.count(stop_name);
-        if (has_buses == 0) {
-            info += ": no buses\n";
-            return info;
+        const auto it = buses_to_stop_.find(stop_name);
+        if (it == buses_to_stop_.end()) {
+            StopInfo stop_info{
+                                true,
+                                stop_name,
+                                std::set<std::string_view>()
+            };
+            return stop_info;
         }
 
-        bool is_first = true;
-        for (const auto bus_name : buses_to_stop_.at(stop_name)) {
-            if (is_first) {
-                info += ": buses " + string(bus_name);
-                is_first = false;
-            }
-            else {
-                info += " " + string(bus_name);
-            }
-
+        StopInfo stop_info{
+                                true,
+                                stop_name,
+                                std::set<std::string_view>()
+        };
+        for (const auto bus_name : (*it).second) {
+            stop_info.buses.insert(bus_name);
         }
-        info += "\n";
 
-        return info;
+        return stop_info;
     }
 }

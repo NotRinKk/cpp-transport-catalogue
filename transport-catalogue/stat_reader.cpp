@@ -13,12 +13,36 @@ namespace stat_reader {
         
         if (command == "Bus") {
 
-            output << transport_catalogue.GetBusInfo(info_of);
+            const auto bus_info = transport_catalogue.GetBusInfo(info_of);
+            
+            if (!bus_info.exists) {
+                output << "Bus " << bus_info.name << ": not found";      
+            }
+            else {
+                output << "Bus " << bus_info.name << ": " 
+                    << bus_info.stops << " stops on route, " 
+                    << bus_info.unique_stops << " unique stops, "
+                    << std::setprecision(6) << bus_info.distance << " route length";
+            }
         }
         else if (command == "Stop") {
 
-            output << transport_catalogue.GetStopInfo(info_of);
+            const auto stop_info = transport_catalogue.GetStopInfo(info_of);
+
+            if(!stop_info.exists) {
+                output << "Stop " << stop_info.name << ": not found";
+            }
+            else if(stop_info.buses.empty()) {
+                output << "Stop " << stop_info.name << ": no buses";
+            }
+            else {
+                output << "Stop " << stop_info.name << ": buses";
+                for (const auto bus : stop_info.buses) {
+                    output << " " << bus;
+                }
+            }
         }
+        output << std::endl;
 
     }
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <iomanip>
 #include <set>
 #include <string>
 #include <string_view>
@@ -25,12 +24,26 @@ namespace transport_catalogue {
 			std::vector<Stop*> stops;
 		};
 		
+		struct BusInfo {
+			bool exists;
+			std::string_view name;
+			size_t stops;
+			size_t unique_stops;
+			double distance;
+		};
+
+		struct StopInfo {
+			bool exists;
+			std::string_view name;
+			std::set<std::string_view> buses;
+		};
+
 		void AddStop(const Stop& stop);
 		void AddBus(const Bus& bus);
 		Bus* FindBusByName(std::string_view name) const;
 		Stop* FindStopByName(std::string_view name) const;
-		std::string GetBusInfo(std::string_view bus_name) const;
-		std::string GetStopInfo(std::string_view stop_name) const;
+		BusInfo GetBusInfo(std::string_view bus_name) const;
+		StopInfo GetStopInfo(std::string_view stop_name) const;
 
 	private:
 		std::deque<Stop> stops_;
