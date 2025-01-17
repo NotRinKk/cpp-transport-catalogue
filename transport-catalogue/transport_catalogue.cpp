@@ -1,6 +1,15 @@
 #include "transport_catalogue.h"
 
 namespace transport_catalogue {
+
+    void TransportCatalogue::AddStopDistances(std::string_view stop, std::vector<std::pair<int, std::string>> distances_stops) {
+        auto itl = index_stops_.find(stop);
+
+        for (const auto& [distance, neighbor_stop] : distances_stops) {
+            stops_distance_[std::make_pair((*itl).second, (*index_stops_.find(neighbor_stop)).second)] = distance;
+        }
+    }
+
     void TransportCatalogue::AddStop(const Stop& stop) {
         stops_.push_back(stop);
         index_stops_[stops_.back().stop_name] = &stops_.back();
@@ -60,23 +69,44 @@ namespace transport_catalogue {
                              bus_name,
                              0u,
                              0u,
+                             0,
                              0. 
             };
             return bus_info;
         }
 
         size_t unique_stops = CountUniqueStopsByBus(bus);
-        double distance = GetBusDistance(bus);
+        double distance = GetBusFactDistance (bus);
+        double curvature = CalculateCurvature(bus);
 
         BusInfo bus_info{
                           true,
                           bus_name,
                           bus->stops.size(),
                           unique_stops,
-                          distance 
+                          distance,
+                          curvature 
         };
 
         return bus_info;
+    }
+
+    int TransportCatalogue::GetBusFactDistance(Bus* bus) const {
+        int distance = 0;
+        for (size_t stop = 0; stop + 1 < bus->stops.size(); ++stop) {
+            auto it = stops_distance_.find(std::make_pair(bus->stops[stop], bus->stops[stop + 1]));
+
+            if (it == stops_distance_.end()) {
+                it = stops_distance_.find(std::make_pair(bus->stops[stop + 1], bus->stops[stop]));
+            }
+
+            distance += it->second;
+        }
+        return distance;
+    }
+
+    double TransportCatalogue::CalculateCurvature(Bus* bus) const {
+        return static_cast<double>(GetBusFactDistance(bus)) / GetBusDistance(bus);
     }
 
     TransportCatalogue::StopInfo TransportCatalogue::GetStopInfo(std::string_view stop_name) const {
@@ -112,5 +142,11 @@ namespace transport_catalogue {
         }
 
         return stop_info;
+    }
+
+    void TransportCatalogue::AddAllDistancesToStops(std::unordered_map<std::string, std::vector<std::pair<int, std::string>>> stop_to_distances) {
+        for (const auto& stop : stop_to_distances) {
+            AddStopDistances(stop.first, std::move(stop.second));
+        }
     }
 }

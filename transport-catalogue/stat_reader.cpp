@@ -22,7 +22,8 @@ namespace stat_reader {
                 output << "Bus " << bus_info.name << ": " 
                     << bus_info.stops << " stops on route, " 
                     << bus_info.unique_stops << " unique stops, "
-                    << std::setprecision(6) << bus_info.distance << " route length";
+                    << std::setprecision(6) << bus_info.distance << " route length, "
+                    << bus_info.curvature << " curvature";
             }
         }
         else if (command == "Stop") {

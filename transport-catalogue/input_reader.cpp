@@ -17,10 +17,51 @@ namespace input_reader {
 
         auto not_space2 = str.find_first_not_of(' ', comma + 1);
 
+        auto next_comma = str.find_first_of(',', not_space2);
+
         double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
-        double lng = std::stod(std::string(str.substr(not_space2)));
+        
+        double lng = std::stod(std::string(str.substr(not_space2, next_comma - not_space2)));
 
         return {lat, lng};
+    }
+    std::vector<std::pair<int, std::string>> ParseDistances(std::string_view str) {
+
+        std::vector<std::pair<int, std::string>> result;
+
+        size_t comma = str.find_first_of(',', str.find_first_of(',') + 1);
+        if (comma == std::string::npos) {
+            return std::vector<std::pair<int, std::string>>{};
+        }
+
+        while (!str.empty()) {
+            size_t start = str.find_first_not_of(' ', comma + 1);
+            size_t end = str.find_first_of(' ', start);
+
+            int distance = std::stoi(std::string(str.substr(start, end - 1 - start)));
+
+            start = str.find_first_not_of(' ', str.find_first_of(' ', str.find_first_not_of(' ', end + 1)));
+            comma = str.find_first_of(',', start);
+            
+            std::string stop;
+            if (comma != std::string::npos) {
+                stop = std::string(str.substr(start, comma - start));
+            }
+            else {
+                stop = std::string(str.substr(start));
+            }
+            
+            result.push_back(std::make_pair(distance, stop));
+            if (comma == std::string::npos) {
+                str = "";
+            }
+            else {
+                str = str.substr(comma);
+                comma = str.find_first_of(' ');
+            }
+        }
+        
+        return result;
     }
 
     std::string_view Trim(std::string_view string) {
@@ -101,11 +142,16 @@ namespace input_reader {
 
         std::sort(commands_.begin(), commands_.end(), command_comp);
 
+        std::unordered_map<std::string, std::vector<std::pair<int, std::string>>> stops_to_distances;
         for (const CommandDescription& cmd : commands_) {
             if (Trim(cmd.command) == "Stop") {
+                std::string_view description = Trim(cmd.description);
                 transport_catalogue::TransportCatalogue::Stop stop = { std::string(Trim(cmd.id)),
-                                                ParseCoordinates(Trim(cmd.description)) };        
-                
+                                                ParseCoordinates(description) };        
+                std::vector<std::pair<int, std::string>> distances = ParseDistances(description);
+                if (!distances.empty()) {
+                    stops_to_distances[stop.stop_name] = std::move(distances);                                                
+                }
                 catalogue.AddStop(std::move(stop));
             }
             else {
@@ -122,5 +168,6 @@ namespace input_reader {
                 catalogue.AddBus(std::move(bus));
             }
         }
+        catalogue.AddAllDistancesToStops(std::move(stops_to_distances));
     }
 }
