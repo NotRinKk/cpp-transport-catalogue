@@ -1,5 +1,4 @@
 #pragma once
-
 #include <deque>
 #include <set>
 #include <string>
@@ -10,35 +9,13 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "geo.h"
+#include "domain.h"
 
 namespace transport_catalogue {
+	using namespace domain;
 	class TransportCatalogue {
+
 	public:
-		struct Stop	{
-			std::string stop_name;
-			geo::Coordinates coordinates;
-		};
-
-		struct Bus {
-			std::string bus_name;
-			std::vector<Stop*> stops;
-		};
-		
-		struct BusInfo {
-			bool exists;
-			std::string_view name;
-			size_t stops;
-			size_t unique_stops;
-			double distance;
-			double curvature;
-		};
-
-		struct StopInfo {
-			bool exists;
-			std::string_view name;
-			std::set<std::string_view> buses;
-		};
-
 		void AddStop(const Stop& stop);
 		void AddBus(const Bus& bus);
 		Bus* FindBusByName(std::string_view name) const;
@@ -46,12 +23,15 @@ namespace transport_catalogue {
 		BusInfo GetBusInfo(std::string_view bus_name) const;
 		StopInfo GetStopInfo(std::string_view stop_name) const;
 		void AddAllDistancesToStops(std::unordered_map<std::string, std::vector<std::pair<int, std::string>>> stop_to_distances);
+		std::set<const Bus*, BusComparator> GetAllBuses() const;
+		std::vector<geo::Coordinates> GetAllStopsCoordinates() const;
+		std::set<Stop*, StopComparator> GetAllStopsWithBus() const;
 
 	private:
 	    struct StopsHasher {
-			size_t operator()(const std::pair<TransportCatalogue::Stop*, TransportCatalogue::Stop*>& p) const {
-				size_t hash1 = std::hash<TransportCatalogue::Stop*>()(p.first);
-				size_t hash2 = std::hash<TransportCatalogue::Stop*>()(p.second);
+			size_t operator()(const std::pair<Stop*, Stop*>& p) const {
+				size_t hash1 = std::hash<Stop*>()(p.first);
+				size_t hash2 = std::hash<Stop*>()(p.second);
 
 				return hash1 * 17 + hash2;
 			}
@@ -69,6 +49,5 @@ namespace transport_catalogue {
 		int GetBusFactDistance(Bus* bus) const;
 		void AddStopDistances(std::string_view stop, std::vector<std::pair<int, std::string>> distances_to_stops);
 		double CalculateCurvature(Bus* bus) const;
-		
 	};
 }
