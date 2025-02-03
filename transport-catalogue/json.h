@@ -21,21 +21,14 @@ namespace json {
     using Number = std::variant<int, double>;
 
 
+    using VariantType = std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>;
 
-    class Node {
+    class Node final
+    : private VariantType
+    {
     public:
-        using Value = std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>;
+        using variant::variant;
 
-        Node() = default;
-        Node(std::nullptr_t) : value_(nullptr) {}
-        Node(bool value) : value_(value) {}
-        Node(int value) : value_(value) {}
-        Node(double value) : value_(value) {}
-        Node(const std::string& value) : value_(value) {}
-        Node(Array array) : value_(std::move(array)) {}
-        Node(Dict map) : value_(std::move(map)) {}
-
-        const Value& GetValue() const;
         const Array& AsArray() const;
         const Dict& AsMap() const;
         int AsInt() const;
@@ -53,10 +46,9 @@ namespace json {
         bool IsMap() const;
         bool operator==(const Node& other) const;
         bool operator!=(const Node& other) const;
-
+    
     private:
-        Value value_;
-
+        const VariantType& AsVariant() const;
     };
 
     class Document {

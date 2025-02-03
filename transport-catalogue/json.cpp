@@ -196,96 +196,91 @@ Node LoadNode(istream& input) {
 
 }  // namespace
 
-
-
-
-const Node::Value& Node::GetValue() const {
-    return value_; 
-}
-
-
-
 bool Node::IsInt() const {
-    return holds_alternative<int>(value_);
+    return holds_alternative<int>(*this);
 }
 
 bool Node::IsDouble() const {
-    return holds_alternative<double>(value_) ||
-           holds_alternative<int>(value_);
+    return holds_alternative<double>(*this) ||
+           holds_alternative<int>(*this);
 }
 
 bool Node::IsPureDouble() const {
-    return holds_alternative<double>(value_);
+    return holds_alternative<double>(*this);
 }
 
 bool Node::IsBool() const {
-    return holds_alternative<bool>(value_);
+    return holds_alternative<bool>(*this);
 }
 
 bool Node::IsString() const {
-    return holds_alternative<string>(value_);
+    return holds_alternative<string>(*this);
 }
 
 bool Node::IsNull() const {
-    return holds_alternative<nullptr_t>(value_);
+    return holds_alternative<nullptr_t>(*this);
 }
 
 bool Node::IsArray() const {
-    return holds_alternative<Array>(value_);
+    return holds_alternative<Array>(*this);
 }
 
 bool Node::IsMap() const {
-    return holds_alternative<Dict>(value_);
+    return holds_alternative<Dict>(*this);
 }
 
 int Node::AsInt() const {
     if (IsInt()) {
-            return get<int>(value_);
+            return get<int>(*this);
     }
     throw logic_error("Not an int");
 }
 
 double Node::AsDouble() const {
     if (IsInt()) {
-        return static_cast<double>(get<int>(value_));
+        return static_cast<double>(get<int>(*this));
     }
     if (IsDouble()) {
-        return get<double>(value_);
+        return get<double>(*this);
     }
 
     throw logic_error("Not a double");
 }
 const string& Node::AsString() const {
     if (IsString()) {
-        return get<string>(value_);
+        return get<string>(*this);
     }
     throw logic_error("Not a string");
 }
 const Array& Node::AsArray() const {
     if (IsArray()) { 
-        return get<Array>(value_);
+        return get<Array>(*this);
     }
     throw logic_error("Not an array");
 }
 bool Node::AsBool() const {
     if(IsBool()) {
-        return get<bool>(value_);
+        return get<bool>(*this);
     }
     throw logic_error("Not a bool");
 }
 
 const Dict& Node::AsMap() const {
     if(IsMap()) {
-        return get<Dict>(value_);
+        return get<Dict>(*this);
     }
     throw logic_error("Not a Map");
 }
 
 bool Node::operator==(const Node& other) const {
-    return value_ == other.value_;
+    return AsVariant() == other.AsVariant();
 }
 bool Node::operator!=(const Node& other) const {
-    return !(*this == other);
+    return AsVariant() != other.AsVariant();
+}
+
+const VariantType& Node::AsVariant() const {
+    return static_cast<const VariantType&>(*this);
 }
 
 bool Document::operator==(const Document& other) const {
