@@ -32,52 +32,54 @@ namespace json_reader {
         return result;
     }
     void JsonReader::PrintResponse(request_handler::RequestHandler& handler) {
-        std::cout << "[" << std::endl;
-        std::string space(4, ' ');
+        auto json_build = json::Builder{};
+        json_build.StartArray();
+        
         auto requests = doc_.GetRoot().AsMap().at("stat_requests").AsArray();
-        bool is_first_req = true;
         for (const auto& req : requests) {
-            if (!is_first_req) {
-                std::cout << "," << std::endl;
-            }
-            is_first_req = false;
             auto command = req.AsMap();
-            std::cout << space << "{" << std::endl;
 
             if (command.at("type").AsString() == "Stop") {
                 auto response = handler.GetBusesByStop(command.at("name").AsString());
                 if (response) {
-                    std::cout << space << space << "\"buses\": [" << std::endl;
-                    bool is_first = true;
-                    auto buses = response.value();
-                    for (const auto& element : buses) {
-                        if (!is_first) {
-                            std::cout << ", " << std::endl;
-                        }
-                        is_first = false;
-                        std::cout << space << space << space << "\"" << element << "\"";
-                    }
-                    std::cout << std::endl << space << space <<  "]," << std::endl;
-                    std::cout << space << space << "\"request_id\": " << command.at("id").AsInt() << std::endl;
+                    json::Array bus_arr;
+                    bus_arr.reserve(response.value().size());
+                    
+                    std::transform(
+                        response.value().begin(), response.value().end(),
+                        std::back_inserter(bus_arr),
+                        [](auto& bus) { return std::string(bus); } 
+                    );
+
+                    json_build.StartDict()
+                                .Key("buses").Value(bus_arr)
+                                .Key("request_id").Value(command.at("id").AsInt())
+                              .EndDict();
                 }
                 else {
-                    std::cout << space << space << "\"request_id\": " << command.at("id").AsInt() << "," << std::endl;
-                    std::cout << space << space << "\"error_message\": \"not found\"" << std::endl;
+                    json_build.StartDict()
+                                .Key("error_message").Value("not found")
+                                .Key("request_id").Value(command.at("id").AsInt())
+                              .EndDict();
                 }
             }
             else if (command.at("type").AsString() == "Bus") {
                 
                 auto response = handler.GetBusStat(command.at("name").AsString());
                 if (response) {
-                    std::cout << space << space << "\"curvature\": " << response.value().curvature << "," << std::endl;
-                    std::cout << space << space << "\"request_id\": " << command.at("id").AsInt() << "," << std::endl;
-                    std::cout << space << space << "\"route_length\": " << response.value().distance << "," << std::endl;
-                    std::cout << space << space << "\"stop_count\": " << response.value().stops << "," << std::endl;
-                    std::cout << space << space << "\"unique_stop_count\": " << response.value().unique_stops << std::endl;
+                    json_build.StartDict()
+                                .Key("curvature").Value(response.value().curvature)
+                                .Key("request_id").Value(command.at("id").AsInt())
+                                .Key("route_length").Value(response.value().distance)
+                                .Key("stop_count").Value(static_cast<int>(response.value().stops))
+                                .Key("unique_stop_count").Value(static_cast<int>(response.value().unique_stops))
+                              .EndDict();
                 }
                 else {
-                    std::cout << space << space << "\"request_id\": " << command.at("id").AsInt() << "," << std::endl;
-                    std::cout << space << space << "\"error_message\": \"not found\"" << std::endl;
+                    json_build.StartDict()
+                                .Key("error_message").Value("not found")
+                                .Key("request_id").Value(command.at("id").AsInt())
+                              .EndDict();
                 }
             }
             else {
@@ -85,13 +87,16 @@ namespace json_reader {
                 handler.RenderMap(svg_output);
 
                 std::string map = svg_output.str();
-                map = std::move(EscapeString(map));
-                std::cout << space << space << "\"map\": " << map << "," << std::endl;
-                std::cout << space << space << "\"request_id\": " << command.at("id").AsInt() << std::endl;
+                json_build.StartDict()
+                            .Key("map").Value(map)
+                            .Key("request_id").Value(command.at("id").AsInt())
+                          .EndDict();
             }
-            std::cout << space << "}";
         }
-        std::cout << std::endl << "]";
+        json::Print(
+              json::Document{json_build.EndArray().Build()}
+              , std::cout
+        );
     }
 
     std::vector<std::string_view> JsonReader::GetRoute(const json::Array& stops, bool is_roundtrip) {

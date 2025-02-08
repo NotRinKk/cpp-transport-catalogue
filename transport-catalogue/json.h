@@ -18,9 +18,6 @@ namespace json {
         using runtime_error::runtime_error;
     };
 
-    using Number = std::variant<int, double>;
-
-
     using VariantType = std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>;
 
     class Node final
@@ -28,6 +25,7 @@ namespace json {
     {
     public:
         using variant::variant;
+        using Value = variant;
 
         const Array& AsArray() const;
         const Dict& AsMap() const;
@@ -46,6 +44,7 @@ namespace json {
         bool IsMap() const;
         bool operator==(const Node& other) const;
         bool operator!=(const Node& other) const;
+        const Value& GetValue() const;
     
     private:
         const VariantType& AsVariant() const;
