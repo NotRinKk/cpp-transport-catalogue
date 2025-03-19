@@ -176,4 +176,4 @@ namespace renderer {
         AddBusesLines(doc, proj, buses);
         AddBusesLabels(doc, proj, buses);
     }
-}
+} // namespace renderer

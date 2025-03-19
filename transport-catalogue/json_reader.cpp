@@ -31,6 +31,102 @@ namespace json_reader {
         result += "\"";
         return result;
     }
+    void JsonReader::HandleStopRequest(const json::Dict& command_data, request_handler::RequestHandler& handler, json::Builder& builder) const {
+        auto response = handler.GetBusesByStop(command_data.at("name").AsString());
+        if (response) {
+            json::Array bus_arr;
+            bus_arr.reserve(response.value().size());
+            
+            std::transform(
+                response.value().begin(), response.value().end(),
+                std::back_inserter(bus_arr),
+                [](auto& bus) { return std::string(bus); } 
+            );
+
+            builder.StartDict()
+                        .Key("buses").Value(bus_arr)
+                        .Key("request_id").Value(command_data.at("id").AsInt())
+                      .EndDict();
+        }
+        else {
+            builder.StartDict()
+                        .Key("error_message").Value("not found")
+                        .Key("request_id").Value(command_data.at("id").AsInt())
+                      .EndDict();
+        }
+    }
+    void JsonReader::HandleBusRequest(const json::Dict& command_data, request_handler::RequestHandler& handler, json::Builder& builder) const {      
+        auto response = handler.GetBusStat(command_data.at("name").AsString());
+        if (response) {
+            builder.StartDict()
+                        .Key("curvature").Value(response.value().curvature)
+                        .Key("request_id").Value(command_data.at("id").AsInt())
+                        .Key("route_length").Value(response.value().distance)
+                        .Key("stop_count").Value(static_cast<int>(response.value().stops))
+                        .Key("unique_stop_count").Value(static_cast<int>(response.value().unique_stops))
+                      .EndDict();
+        }
+        else {
+            builder.StartDict()
+                        .Key("error_message").Value("not found")
+                        .Key("request_id").Value(command_data.at("id").AsInt())
+                      .EndDict();
+        }
+    }
+    void JsonReader::HandleRouteRequest(const json::Dict& command_data, request_handler::RequestHandler& handler, json::Builder& builder) const {
+        auto response = handler.BuildRoute(command_data.at("from").AsString(), command_data.at("to").AsString());
+        json::Array items;
+        if (!response) {
+            builder
+                .StartDict()
+                    .Key("request_id").Value(command_data.at("id").AsInt())
+                    .Key("error_message").Value("not found")
+                .EndDict();        
+        }
+        else {
+            for (const auto& element : response->records) {
+                if (element.is_bus) { // Это автобусный сегмент
+                    items.emplace_back(
+                        json::Builder{}
+                            .StartDict()
+                                .Key("type").Value("Bus")
+                                .Key("bus").Value(element.name)
+                                .Key("span_count").Value(element.span_count)
+                                .Key("time").Value(element.time)
+                            .EndDict()
+                        .Build()
+                    );
+                } else { // Это ожидание на остановке
+                    items.emplace_back(
+                        json::Builder{}
+                            .StartDict()
+                                .Key("type").Value("Wait")
+                                .Key("stop_name").Value(element.name)
+                                .Key("time").Value(element.time)
+                            .EndDict()
+                        .Build()
+                    );
+                }
+            }
+            builder
+            .StartDict()
+                .Key("request_id").Value(command_data.at("id").AsInt())
+                .Key("total_time").Value(response->travel_time)
+                .Key("items").Value(items)
+            .EndDict();   
+        }
+    }
+    void JsonReader::HandleMapRequest(const json::Dict& command_data, request_handler::RequestHandler& handler, json::Builder& builder) const {
+        std::ostringstream svg_output;
+        handler.RenderMap(svg_output);
+
+        std::string map = svg_output.str();
+        builder.StartDict()
+                    .Key("map").Value(map)
+                    .Key("request_id").Value(command_data.at("id").AsInt())
+                  .EndDict();
+    }
+
     void JsonReader::PrintResponse(request_handler::RequestHandler& handler) {
         auto json_build = json::Builder{};
         json_build.StartArray();
@@ -40,63 +136,22 @@ namespace json_reader {
             auto command = req.AsMap();
 
             if (command.at("type").AsString() == "Stop") {
-                auto response = handler.GetBusesByStop(command.at("name").AsString());
-                if (response) {
-                    json::Array bus_arr;
-                    bus_arr.reserve(response.value().size());
-                    
-                    std::transform(
-                        response.value().begin(), response.value().end(),
-                        std::back_inserter(bus_arr),
-                        [](auto& bus) { return std::string(bus); } 
-                    );
-
-                    json_build.StartDict()
-                                .Key("buses").Value(bus_arr)
-                                .Key("request_id").Value(command.at("id").AsInt())
-                              .EndDict();
-                }
-                else {
-                    json_build.StartDict()
-                                .Key("error_message").Value("not found")
-                                .Key("request_id").Value(command.at("id").AsInt())
-                              .EndDict();
-                }
+                HandleStopRequest(command, handler, json_build);
             }
             else if (command.at("type").AsString() == "Bus") {
-                
-                auto response = handler.GetBusStat(command.at("name").AsString());
-                if (response) {
-                    json_build.StartDict()
-                                .Key("curvature").Value(response.value().curvature)
-                                .Key("request_id").Value(command.at("id").AsInt())
-                                .Key("route_length").Value(response.value().distance)
-                                .Key("stop_count").Value(static_cast<int>(response.value().stops))
-                                .Key("unique_stop_count").Value(static_cast<int>(response.value().unique_stops))
-                              .EndDict();
-                }
-                else {
-                    json_build.StartDict()
-                                .Key("error_message").Value("not found")
-                                .Key("request_id").Value(command.at("id").AsInt())
-                              .EndDict();
-                }
+                HandleBusRequest(command, handler, json_build);
+            }
+            else if (command.at("type").AsString() == "Route") {
+                HandleRouteRequest(command, handler, json_build);
             }
             else {
-                std::ostringstream svg_output;
-                handler.RenderMap(svg_output);
-
-                std::string map = svg_output.str();
-                json_build.StartDict()
-                            .Key("map").Value(map)
-                            .Key("request_id").Value(command.at("id").AsInt())
-                          .EndDict();
+                HandleMapRequest(command, handler, json_build);
             }
         }
         json::Print(
-              json::Document{json_build.EndArray().Build()}
-              , std::cout
-        );
+            json::Document{json_build.EndArray().Build()}
+            , std::cout
+          );
     }
 
     std::vector<std::string_view> JsonReader::GetRoute(const json::Array& stops, bool is_roundtrip) {
@@ -176,6 +231,15 @@ namespace json_reader {
         return settings;
     }
 
+    router::Settings JsonReader::GetRoutingSettings() {
+        router::Settings settings;
+        const json::Dict& dict = doc_.GetRoot().AsMap().at("routing_settings").AsMap();
+        settings.bus_velocity = dict.at("bus_velocity").AsDouble();
+        settings.bus_wait_time = dict.at("bus_wait_time").AsInt();
+        return settings;
+    }
+
+
     std::variant<std::string, std::vector<double>> JsonReader::GetColor(const json::Node& value) {
         std::variant<std::string, std::vector<double>> color;
         if (value.IsArray()) {
@@ -207,4 +271,4 @@ namespace json_reader {
         }
         return colors;
     }
-}
+} // namespace json_reader

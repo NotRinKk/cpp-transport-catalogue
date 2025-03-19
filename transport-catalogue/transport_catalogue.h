@@ -26,6 +26,7 @@ namespace transport_catalogue {
 		std::set<const Bus*, BusComparator> GetAllBuses() const;
 		std::vector<geo::Coordinates> GetAllStopsCoordinates() const;
 		std::set<Stop*, StopComparator> GetAllStopsWithBus() const;
+		int GetStopDistance(const Stop* from, const Stop* to) const;
 
 	private:
 	    struct StopsHasher {
@@ -50,4 +51,4 @@ namespace transport_catalogue {
 		void AddStopDistances(std::string_view stop, std::vector<std::pair<int, std::string>> distances_to_stops);
 		double CalculateCurvature(Bus* bus) const;
 	};
-}
+} // namespace transport_catalogue

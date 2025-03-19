@@ -117,4 +117,4 @@ namespace renderer {
     private:
         Settings settings_;
     };
-}
+} // namespace renderer

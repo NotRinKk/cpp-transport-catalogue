@@ -43,4 +43,12 @@ namespace domain {
             return lhs->stop_name < rhs->stop_name;
         }
     };
-}
+
+    template <typename T1, typename T2>
+    bool IsSame(T1 lhs, T2 rhs) {
+        static_assert(std::is_arithmetic<T1>::value && std::is_arithmetic<T2>::value, 
+                      "IsSame: T1 and T2 must be arithmetic types");
+    
+        return std::abs(lhs - rhs) < 1e-6;
+    }
+} // namespace domain

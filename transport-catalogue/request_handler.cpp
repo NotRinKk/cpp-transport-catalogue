@@ -2,9 +2,12 @@
 
 namespace request_handler {
     using namespace domain;
-    RequestHandler::RequestHandler(const transport_catalogue::TransportCatalogue& db, const renderer::MapRenderer& renderer) 
+    RequestHandler::RequestHandler(const transport_catalogue::TransportCatalogue& db,
+                                   const renderer::MapRenderer& renderer,
+                                   const router::TransportRouter& routing) 
         : db_(db)
-        , renderer_(renderer) {
+        , renderer_(renderer)
+        , routing_(routing) {
     }
 
     std::optional<BusInfo> RequestHandler::GetBusStat(const std::string_view& bus_name) const {
@@ -50,4 +53,9 @@ namespace request_handler {
     std::vector<geo::Coordinates> RequestHandler::GetStopsCoordinates() const {
         return db_.GetAllStopsCoordinates();
     }
-}
+
+    std::optional<router::RoutingResult> RequestHandler::BuildRoute(std::string_view from, std::string_view to) const {
+        return routing_.BuildRoute(from, to);
+    }
+
+} // namespace request_handler

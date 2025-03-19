@@ -173,4 +173,4 @@ namespace json {
     bool Builder::EmptyJson() const {
         return nodes_stack_.empty() && root_.IsNull();
     }
-}
+} // namespace json

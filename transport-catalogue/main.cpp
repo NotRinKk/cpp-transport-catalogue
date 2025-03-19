@@ -11,7 +11,8 @@ int main() {
         json_reader::JsonReader reader(std::cin);
         reader.BuildBase();
         renderer::MapRenderer renderer(reader.GetRenderSettings());
-        request_handler::RequestHandler handler(reader.GetCatalogue(), renderer);
+        router::TransportRouter router(reader.GetCatalogue(), reader.GetRoutingSettings());
+        request_handler::RequestHandler handler(reader.GetCatalogue(), renderer, router);
         reader.PrintResponse(handler);
     }
 }

@@ -91,12 +91,12 @@ namespace transport_catalogue {
         auto bus = FindBusByName(bus_name);
         if (bus == nullptr) {
             BusInfo bus_info{ 
-                             false,
-                             bus_name,
-                             0u,
-                             0u,
-                             0,
-                             0. 
+                .exists = false,
+                .name = bus_name,
+                .stops = 0u,
+                .unique_stops = 0u,
+                .distance = 0,
+                .curvature = 0. 
             };
             return bus_info;
         }
@@ -107,12 +107,12 @@ namespace transport_catalogue {
         double curvature = CalculateCurvature(bus);
 
         BusInfo bus_info{
-                          true,
-                          bus_name,
-                          bus->stops.size(),
-                          unique_stops,
-                          distance,
-                          curvature 
+            .exists = true,
+            .name = bus_name,
+            .stops = bus->stops.size(),
+            .unique_stops = unique_stops,
+            .distance = distance,
+            .curvature = curvature 
         };
 
         return bus_info;
@@ -142,9 +142,9 @@ namespace transport_catalogue {
         auto stop = FindStopByName(stop_name);
         if (stop == nullptr) {
             StopInfo stop_info{
-                                false,
-                                stop_name,
-                                std::set<std::string_view>()
+                .exists = false,
+                .name = stop_name,
+                .buses = std::set<std::string_view>()
             };
             return stop_info;
         }
@@ -152,17 +152,17 @@ namespace transport_catalogue {
         const auto it = buses_to_stop_.find(stop_name);
         if (it == buses_to_stop_.end()) {
             StopInfo stop_info{
-                                true,
-                                stop_name,
-                                std::set<std::string_view>()
+                .exists = true,
+                .name = stop_name,
+                .buses = std::set<std::string_view>()
             };
             return stop_info;
         }
 
         StopInfo stop_info{
-                                true,
-                                stop_name,
-                                std::set<std::string_view>()
+            .exists = true,
+            .name = stop_name,
+            .buses = std::set<std::string_view>()
         };
         for (const auto bus_name : (*it).second) {
             stop_info.buses.insert(bus_name);
@@ -176,4 +176,17 @@ namespace transport_catalogue {
             AddStopDistances(stop.first, std::move(stop.second));
         }
     }
-}
+
+    int TransportCatalogue::GetStopDistance(const Stop* from, const Stop* to) const {
+        std::pair<Stop*, Stop*> key1 = {const_cast<Stop*>(from), const_cast<Stop*>(to)};
+        std::pair<Stop*, Stop*> key2 = {const_cast<Stop*>(to), const_cast<Stop*>(from)};
+        
+        if (auto it = stops_distance_.find(key1); it != stops_distance_.end()) {
+            return it->second;
+        }
+        if (auto it = stops_distance_.find(key2); it != stops_distance_.end()) {
+            return it->second;
+        }
+        return 0;
+    }
+} // namespace transport_catalogue
